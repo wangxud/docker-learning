@@ -5,6 +5,15 @@
 systemd-analyze blame
 ```
 
+#### 多线程下载工具 axel , 下载国外资源时比较快
+```
+yum install -y axel
+#  使用方法
+#  限速使用：加上 -s 参数，如 -s 10240，即每秒下载的字节数，这里是 10 Kb
+#  限制连接数：加上 -n 参数，如 -n 5，即打开 5 个连接
+axel -a -n 10 http://downloadUrl
+```
+
 #### 查看具体的Centos版本(下面任意一条命令)
 ```
 cat /etc/redhat-release
@@ -21,6 +30,21 @@ tar -czvf postgres-idc.tar.gz postgres
 
 # tar解压到指定文件夹
 tar -zxvf dapeng.tar.gz -C /data/nginx/html
+```
+
+#### 批量递归把子孙文件夹的文件转码, 并替换旧的文件
+```
+find 要转码的文件件夹 -type f -exec iconv -f 原来的编码 -t 转码后的编码 {} -o {} \;
+# find 文件夹 -type f -exec iconv -f GBK -t UTF-8 {} -o {} \;
+```
+
+#### 批量递归把子孙文件夹的文件转码到另外的文件夹
+```
+# 递归创建目录结构
+find 要转码的文件件夹 -type d -exec mkdir -p 新文件夹/{} \;
+# find default -type d -exec mkdir -p utf/{} \;
+find 要转码的文件件夹 -type f -exec iconv -f 原来的编码 -t 转码后的编码 {} -o 新文件夹/{} \;
+# find 要转码的文件件夹 -type f -exec iconv -f GBK -t UTF-8 {} -o 新文件夹/{} \;
 ```
 
 ### yum下载软件离线安装包和依赖包
@@ -66,6 +90,11 @@ ps huH p  {pid}  | wc -l
 
 ### Linux搜索指定路径下的文件内容
 ```
+# 查找子孙文件夹下包含指定字符串的文件名
+grep   -lr   'import'   .
+# 要将当前目录的下面所有文件中的old都修改成new，这样做：
+sed   -i   's|old|new|g'   `grep   'old'   -rl   .`
+
 # grep加-i参数不区分大小写
 grep -rni "netty" .
 grep -rn -i "netty" /opt/soft
@@ -95,9 +124,21 @@ head -n 1000 /aa.txt  # 打印前1000的内容
 sed -n '1000,3000p' filename  # 显示1000到300行的数据
 ```
 
+### 访问nginx时，nginx提示403，日志打印没权限的解决方法
+```
+# chown -R 用户名 .
+# chmod -R 655 .
+chmod -R 655 目录
+```
+
 ### alpine apk 安装指定版本的软件
 ```
 apk add python2=2.7.14-r2
+```
+
+### Linux下iconv转换文件从GBK到UTF-8
+```
+iconv -f gbk -t utf-8 source-file -o target-file
 ```
 
 ### Linux禁止删除文件夹
@@ -133,14 +174,46 @@ lsattr $PWD
 # --------------e--- /当前路径/workspace      # 输出结果
 ```
 
-#### 获取kernel-ml离线安装包
+#### 获取kernel-ml离线安装包(内终于有kernel镜像源，由中科大提供的)
 ```
 # 载入公钥
-rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+# rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
 # 安装ELRepo
-rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-3.el7.elrepo.noarch.rpm
+# rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-3.el7.elrepo.noarch.rpm
 # yum --disablerepo=\* --enablerepo=elrepo-kernel list kernel* # 查询内核安装包列表
-yum list kernel*   # 查出来的仓库地址是香港的 hkg.mirror.rackspace.com 
+# yum list kernel*   # 查出来的仓库地址是香港的 hkg.mirror.rackspace.com 
+cat > /etc/yum.repos.d/elrepo.repo << "EOF"
+[elrepo]
+name=ELRepo.org Community Enterprise Linux Repository – el7
+baseurl=https://mirrors.ustc.edu.cn/elrepo/elrepo/el7/$basearch/
+enabled=1
+gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-elrepo.org
+protect=0
+[elrepo-testing]
+name=ELRepo.org Community Enterprise Linux Testing Repository – el7
+baseurl=https://mirrors.ustc.edu.cn/elrepo/testing/el7/$basearch/
+enabled=1
+gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-elrepo.org
+protect=0
+[elrepo-kernel]
+name=ELRepo.org Community Enterprise Linux Kernel Repository – el7
+baseurl=https://mirrors.ustc.edu.cn/elrepo/kernel/el7/$basearch/
+enabled=1
+gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-elrepo.org
+protect=0
+[elrepo-extras]
+name=ELRepo.org Community Enterprise Linux Extras Repository – el7
+baseurl=https://mirrors.ustc.edu.cn/elrepo/extras/el7/$basearch/
+enabled=1
+gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-elrepo.org
+protect=0
+EOF
+
+
 mkdir -p kernel-ml
 yum --enablerepo=elrepo-kernel install --downloadonly --downloaddir=kernel-ml kernel-ml-devel kernel-ml
 tar -czvf kernel-ml.tar.gz kernel-ml

@@ -1,5 +1,39 @@
 ## 常用的docker容器命令
 
+### 在生产线上，被容器日志占满硬盘坑了无数次
+* 
+* 查看已有容器的日志大小    ll -h $(find /var/lib/docker/containers/ -name *-json.log)
+* max-file=3，意味着一个容器有三个日志，分别是id+.json、id+1.json、id+2.json，亲测，有每秒2万多的请求压测nginx容器，好像没有生成3个日志文件，不知道是高版本不适用，还是参数改了，还是nginx请求太多，没能及时生成3
+```
+tee /etc/docker/daemon.json <<-'EOF'
+{
+    "registry-mirrors": ["https://kfp63jaj.mirror.aliyuncs.com"],
+    "log-driver": "json-file",
+    "log-opts": {
+        "max-size": "300m",
+        "max-file":"3"
+    }
+}
+EOF
+```
+
+#### 查看本地docker的network的所有网段信息
+```
+docker network inspect --format='{{.IPAM.Config}} {{.Name}}' $(docker network ls -q)
+# [{192.168.32.0/20  192.168.32.1 map[]}] aa_default
+# [{10.10.58.0/24  10.10.58.1 map[]}] ansible-network
+# [{172.17.0.0/16  172.17.0.1 map[]}] bridge
+# [{172.16.18.0/24  172.16.18.1 map[]}] cluster_elk-network
+# [{172.20.0.0/16  172.20.0.1 map[]}] compose_default
+# [{172.23.0.0/16  172.23.0.1 map[]}] console_default
+# [{172.26.0.0/16  172.26.0.1 map[]}] consul_consul
+# [{10.10.10.0/24  10.10.10.1 map[]}] docker-swarm-network
+# [{172.29.0.0/16  172.29.0.1 map[]}] docker_gwbridge
+# [{172.21.0.0/16  172.21.0.1 map[]}] document_default
+# [{172.19.0.0/16  172.19.0.1 map[]}] example_default
+# [{172.25.0.0/16  172.25.0.1 map[]}] harbor_harbor
+```
+
 ```
 # 列出所有容器对应的名称，ip以及端口
 docker inspect --format='{{.Name}} {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(docker ps -aq)
@@ -12,6 +46,7 @@ docker inspect --format='{{.Name}} {{.NetworkSettings.IPAddress}} {{.HostConfig.
 # docker inspect -f '{{.Name}} {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}} {{.HostConfig.PortBindings}}' $(docker ps -aq)
 # docker inspect -f='{{.Name}} {{.NetworkSettings.IPAddress}} {{.HostConfig.PortBindings}}' $(docker ps -aq)
 ```
+
 ```
 # postgre启动命令，并且设置连接数
 docker run -itd --name postgresql --restart always -e TZ=Asia/Shanghai -v /etc/localtime:/etc/localtime:ro -v /opt/data/postgresql:/var/lib/postgresql/data -p 5432:5432 -e POSTGRES_USER=sde -e POSTGRES_PASSWORD=postgres postgres:9.6.1 postgres -c max_connections=500
@@ -26,16 +61,16 @@ docker run -itd --restart always -e TZ=Asia/Shanghai -v /etc/localtime:/etc/loca
 docker run -itd --restart always -e TZ=Asia/Shanghai -v /etc/localtime:/etc/localtime:ro --name minio -p 9000:9000 -e MINIO_ACCESS_KEY=minio -e MINIO_SECRET_KEY=minio.minio minio/minio:RELEASE.2019-01-16T21-44-08Z server /export
 
 # redis启动命令
-docker run -itd --restart always -e TZ=Asia/Shanghai -v /etc/localtime:/etc/localtime:ro --name redis -p 6379:6379 redis:4.0.9-alpine
+docker run -itd --restart always -e TZ=Asia/Shanghai -v /etc/localtime:/etc/localtime:ro --name redis -p 6379:6379 redis:5.0.5-alpine redis-server --port 6379 --protected-mode no --pidfile redis.pid --appendonly yes --bind 0.0.0.0 --requirepass admin --masterauth admin --bind 0.0.0.0
 
 # rebbitMQ启动命令
-docker run -itd --restart always -e TZ=Asia/Shanghai -v /etc/localtime:/etc/localtime:ro  --name rabbitmq -p 4369:4369 -p 5671:5671 -p 5672:5672 -p 25672:25672 -p 15671:15671 -p 15672:15672 rabbitmq:3.6.10-management-alpine
+docker run -itd --restart always -e TZ=Asia/Shanghai -v /etc/localtime:/etc/localtime:ro  --name rabbitmq -e RABBITMQ_DEFAULT_VHOST=my_host -e RABBITMQ_DEFAULT_USER=user -e RABBITMQ_DEFAULT_PASS=password -p 4369:4369 -p 5671:5671 -p 5672:5672 -p 25672:25672 -p 15671:15671 -p 15672:15672 rabbitmq:3.8.1-management-alpine
 
 # gitbook启动命令
 docker run -itd --name gitbook --restart always -v /opt/soft/gitbook/soa:/gitbook -p 4000:4000 fellah/gitbook:3.2 sh
 
 ### MySQL5.7设置时区
-docker run -itd --restart always -e TZ=Asia/Shanghai -v /etc/localtime:/etc/localtime:ro -e MYSQL_ROOT_PASSWORD=root -p 3306:3306 --name mysql mysql:5.7.16 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --init-connect='SET NAMES utf8mb4;' --default-time-zone='+8:00' --innodb-flush-log-at-trx-commit=0 --log-timestamps=SYSTEM --sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+docker run -itd --restart always -e TZ=Asia/Shanghai -v /etc/localtime:/etc/localtime:ro -e MYSQL_ROOT_PASSWORD=root -p 3306:3306 --name mysql mysql:5.7.23 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --init-connect='SET NAMES utf8mb4;' --default-time-zone='+8:00' --innodb-flush-log-at-trx-commit=0 --log-timestamps=SYSTEM --sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
 
 docker run -itd --restart always -e TZ=Asia/Shanghai -v /etc/localtime:/etc/localtime:ro -e MYSQL_ROOT_PASSWORD=root -p 3306:3306 --name mysql mysql:5.7.21 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --init-connect='SET NAMES utf8mb4;' --default-time-zone='+8:00' --innodb-flush-log-at-trx-commit=0 --log-timestamps=SYSTEM --sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
 
@@ -57,6 +92,10 @@ docker run -itd --restart always -e TZ=Asia/Shanghai -v /etc/localtime:/etc/loca
 docker run -itd --restart always -e TZ=Asia/Shanghai -v /etc/localtime:/etc/localtime:ro -p 5432:5432 -v /cityworks/postgresql:/var/lib/postgresql/data --name postgres -e POSTGRES_USER=sde -e POSTGRES_PASSWORD=postgres postgres:9.6.1
 # MySQL启动命令
 docker run -itd --restart always -e TZ=Asia/Shanghai -v /etc/localtime:/etc/localtime:ro --name mysql -e MYSQL_ROOT_PASSWORD=root -p 3306:3306 mysql:5.7.3
+
+# nginx命令
+docker run -itd --restart always --name nginx -e TZ=Asia/Shanghai -p 80:80 -v /etc/localtime:/etc/localtime:ro -v /var/log/nginx/:/var/log/nginx -v /home/kk/nginx/conf/nginx.conf:/etc/nginx/nginx.conf -v /usr/share/nginx/html/:/usr/share/nginx/html nginx:1.15.4-alpine
+
 ```
 
 #### 通过docker inspect常用名命令

@@ -9,19 +9,23 @@ echo "deb http://mirrors.aliyun.com/ubuntu/ $(lsb_release -cs)-updates main rest
 echo "deb http://mirrors.aliyun.com/ubuntu/ $(lsb_release -cs)-proposed main restricted universe multiverse" >> /etc/apt/sources.list
 echo "deb http://mirrors.aliyun.com/ubuntu/ $(lsb_release -cs)-backports main restricted universe multiverse" >> /etc/apt/sources.list
 
-echo "deb [arch=amd64] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu $(lsb_release -cs) stable" >> /etc/apt/sources.list
+# step 1: 安装必要的一些系统工具
+sudo apt-get update
+sudo apt-get -y install apt-transport-https ca-certificates curl software-properties-common
+# step 2: 安装GPG证书
+curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg | sudo apt-key add -
+# Step 3: 写入软件源信息
+sudo add-apt-repository "deb [arch=amd64] https://mirrors.aliyun.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable"
+# Step 4: 更新并安装Docker-CE
+sudo apt-get -y update
+sudo apt-get -y install docker-ce
 
-# 添加Docker公共密钥，作用应该是 apt-get 安装 http://mirrors.aliyun.com/docker-ce/linux/ubuntu/ 的docker软件时对比公钥证明仓库是合法的吧
-curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/ubuntu//gpg | apt-key add -
-
-apt-get update && apt-get clean && apt-get autoclean && apt-get clean && apt-get autoremove
-
-apt-get install -y docker-ce
 
 mkdir -p /etc/docker
+# https://docker.mirrors.ustc.edu.cn 是中国科学技术大学的docker仓库加速器，好像是实时代理的，但是时好时坏
 tee /etc/docker/daemon.json <<-'EOF'
 {
-  "registry-mirrors": ["https://docker.mirrors.ustc.edu.cn"]
+  "registry-mirrors": ["https://kfp63jaj.mirror.aliyuncs.com"]
 }
 EOF
 systemctl enable docker #设置docker服务开机自启动
@@ -77,7 +81,7 @@ rm -rf /root/hgp/docker-ce/18.09/lock
 rm -rf /root/hgp/docker-ce/18.09/partial
 ```
 
-#### 下载软件安装包及其依赖( apt-get -d install 软件名=版本号 )，对这条命令很绝望，居然不能下载到指定目录，直接下载到/var/cache/apt/archives目录。白白浪费了半天生命各种百度，痛恨一切垃圾命令、工具和设计
+#### 下载软件安装包及其依赖( apt-get -d install 软件名=版本号 )，对这条命令很绝望，居然不能下载到指定目录，只能下载到/var/cache/apt/archives默认目录，给提取离线安装包造成了困扰。
 ```
 # 列表显示版本库中可以安装的Docker CE
 apt-cache madison docker-ce

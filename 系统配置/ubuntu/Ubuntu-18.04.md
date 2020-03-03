@@ -1,6 +1,11 @@
 
 ## 都切换到root用户进行命令操作
 
+### 默认情况下，root用户没有拥有 /etc/profile环境变量，要在 ~/.bashrc 添加 source /etc/profile 的命令
+```
+echo "source /etc/profile" >> ~/.bashrc
+```
+
 ### 删除LibreOffice
 ```
 sudo apt remove -y libreoffice-calc libreoffice-draw libreoffice-impress libreoffice-writer libreoffice*
@@ -74,9 +79,10 @@ apt-get update && apt-get clean && apt-get autoclean && apt-get clean && apt-get
 apt-get install -y docker-ce
 
 mkdir -p /etc/docker
+# https://docker.mirrors.ustc.edu.cn 是中国科学技术大学的docker仓库加速器，好像是实时代理的，但是时好时坏
 tee /etc/docker/daemon.json <<-'EOF'
 {
-  "registry-mirrors": ["https://docker.mirrors.ustc.edu.cn"]
+  "registry-mirrors": ["https://kfp63jaj.mirror.aliyuncs.com"]
 }
 EOF
 systemctl enable docker #设置docker服务开机自启动
@@ -93,7 +99,19 @@ chmod +x /usr/local/bin/docker-compose
 
 ```
 
-### 卸载gedit(在公司电脑被坑死过很多次，几十行的文件替换后，再撤销替换，电脑直接卡死，只能拔电源线强制关机，害死人了)，安装notepadqq
+#### 多线程下载工具 axel , 下载国外资源时比较快
+```
+sudo apt-get install -y axel
+#  使用方法
+#  限速使用：加上 -s 参数，如 -s 10240，即每秒下载的字节数，这里是 10 Kb
+#  限制连接数：加上 -n 参数，如 -n 5，即打开 5 个连接
+axel -a -n 10 http://downloadUrl
+```
+
+#### 在网上使用 sublime-text_build-3207_amd64.deb 安装包安装, 拒绝使用在线安装sublime-text, 因为不支持中文数据, 要到github下载某个仓库编译, 太麻烦
+
+
+### 卸载gedit(被gedit坑死过很多次，几十行的文件替换后，再撤销回退，电脑直接卡死，只能拔电源线强制关机，害死人了，打开大文件直接卡死了)，安装notepadqq
 ```
 # 用root用户执行命令
 # 卸载 gedit
@@ -222,6 +240,13 @@ sudo apt-get install -y smplayer
 sudo apt-get install -y vlc
 ```
 
+### 安装kazam录屏软件
+```
+sudo apt-get install kazam
+# 启动软件
+kazam
+```
+
 ### 安装 audacious 音乐播放器
 ```
 sudo apt-get install audacious
@@ -229,6 +254,20 @@ sudo apt-get install audacious
 # 解决乱码的操作，在导航菜单依次点击  文件 -> 设置 -> 播放列表 -> 备用字符编码 -> 输入 GBK
 ```
 
+### 解决Ubuntu的SSH自动断线问题
+```
+# 依赖ssh客户端定时发送心跳检测，配置/etc/ssh/ssh_config文件，在末尾添加上
+ServerAliveInterval 20
+ServerAliveCountMax 999
+
+# ServerAliveInterval 20        # 每隔20秒向服务器发出一次心跳检测
+# ServerAliveCountMax 999 # 若超过50次请求都没有成功，就主动断开与服务器端的连接
+```
+
+### 安装Ubuntu远程连接windows的软件rdesktop
+```
+sudo apt-get install rdesktop
+```
 
 ### 安装shadowsocks，Ubuntu-18.04(2019年4月2号，此时还没有Ubuntu-18.04-bionic的版本，只能用Ubuntu-16.04-xenial版本)，适用于Ubuntu-16.04
 ```
@@ -267,4 +306,45 @@ reboot
 ```
 sudo apt-get install xserver-xorg-input-all
 sudo apt-get install --reinstall xserver-xorg-input-all
+```
+
+### 安装wine
+```
+sudo apt-add-repository --remove https://dl.winehq.org/wine-builds/ubuntu/
+sudo apt-add-repository "deb https://dl.winehq.org/wine-builds/ubuntu/ bionic main"
+```
+
+### 安装C语言开发环境
+```
+apt-get install -y build-essential
+```
+
+
+### 禁用系统的 Ctrl+Alt+左箭头 和 Ctrl+Alt+右箭头 快捷键，网上说 Ctrl+Alt+箭头 的快捷键被 gnome3 占用了
+```
+# 查看组合键是否还被系统占用
+gsettings get org.gnome.desktop.wm.keybindings switch-to-workspace-left
+gsettings get org.gnome.desktop.wm.keybindings switch-to-workspace-right
+gsettings get org.gnome.desktop.wm.keybindings switch-to-workspace-up
+gsettings get org.gnome.desktop.wm.keybindings switch-to-workspace-down
+
+# 将 gnome3快捷键置空
+gsettings set org.gnome.desktop.wm.keybindings switch-to-workspace-left "[]"
+gsettings set org.gnome.desktop.wm.keybindings switch-to-workspace-right "[]"
+gsettings set org.gnome.desktop.wm.keybindings switch-to-workspace-up "[]"
+gsettings set org.gnome.desktop.wm.keybindings switch-to-workspace-down "[]"
+
+# 输入ROOT密码，在root模式下也设置禁用
+su -
+
+gsettings set org.gnome.desktop.wm.keybindings switch-to-workspace-left "[]"
+gsettings set org.gnome.desktop.wm.keybindings switch-to-workspace-right "[]"
+gsettings set org.gnome.desktop.wm.keybindings switch-to-workspace-up "[]"
+gsettings set org.gnome.desktop.wm.keybindings switch-to-workspace-down "[]"
+
+# 查看组合键是否还被系统占用
+gsettings get org.gnome.desktop.wm.keybindings switch-to-workspace-left
+gsettings get org.gnome.desktop.wm.keybindings switch-to-workspace-right
+gsettings get org.gnome.desktop.wm.keybindings switch-to-workspace-up
+gsettings get org.gnome.desktop.wm.keybindings switch-to-workspace-down
 ```
